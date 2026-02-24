@@ -40,40 +40,40 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
     }), []);
 
     // Fetch mindmap data
-    useEffect(() => {
-        async function fetchMindmap() {
-            try {
-                setIsLoading(true);
-                setError(null);
+    const fetchMindmap = useCallback(async (forceRegenerate = false) => {
+        try {
+            setIsLoading(true);
+            setError(null);
 
-                const res = await fetch('/api/generate-mindmap', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subjectId }),
-                });
+            const res = await fetch('/api/generate-mindmap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subjectId, forceRegenerate }),
+            });
 
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.error || 'Failed to generate mindmap');
-                }
-
-                const data = await res.json();
-
-                // Store ALL nodes/edges as the source of truth
-                setAllNodes(data.nodes || []);
-                setAllEdges(data.edges || []);
-            } catch (err: any) {
-                console.error('[InteractiveMindmap] Error:', err);
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to generate mindmap');
             }
-        }
 
-        if (subjectId) {
-            fetchMindmap();
+            const data = await res.json();
+
+            // Store ALL nodes/edges as the source of truth
+            setAllNodes(data.nodes || []);
+            setAllEdges(data.edges || []);
+        } catch (err: any) {
+            console.error('[InteractiveMindmap] Error:', err);
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
         }
     }, [subjectId]);
+
+    useEffect(() => {
+        if (subjectId) {
+            fetchMindmap(false);
+        }
+    }, [subjectId, fetchMindmap]);
 
     // Toggle expand/collapse for a branch
     const handleToggleExpand = useCallback((branchId: string) => {
@@ -169,32 +169,46 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
     }
 
     return (
-        <div className="h-[65vh] rounded-3xl border border-slate-200 overflow-hidden bg-white">
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                nodeTypes={nodeTypes}
-                fitView
-                fitViewOptions={{ padding: 0.3 }}
-                panOnDrag
-                zoomOnPinch
-                zoomOnScroll
-                minZoom={0.3}
-                maxZoom={2}
-                defaultEdgeOptions={{
-                    style: { stroke: '#94a3b8', strokeWidth: 2 },
-                    animated: true,
-                }}
-                proOptions={{ hideAttribution: true }}
-            >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#cbd5e1" />
-                <Controls
-                    showInteractive={false}
-                    className="!bg-white !border-slate-200 !shadow-lg !rounded-xl"
-                />
-            </ReactFlow>
+        <div className="relative">
+            {/* Regenerate Button */}
+            <div className="flex justify-end mb-2">
+                <button
+                    onClick={() => fetchMindmap(true)}
+                    disabled={isLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-50 shadow-sm"
+                    title="Regenerate Mindmap"
+                >
+                    <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                    Regenerate
+                </button>
+            </div>
+            <div className="h-[65vh] rounded-3xl border border-slate-200 overflow-hidden bg-white">
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    fitViewOptions={{ padding: 0.3 }}
+                    panOnDrag
+                    zoomOnPinch
+                    zoomOnScroll
+                    minZoom={0.3}
+                    maxZoom={2}
+                    defaultEdgeOptions={{
+                        style: { stroke: '#94a3b8', strokeWidth: 2 },
+                        animated: true,
+                    }}
+                    proOptions={{ hideAttribution: true }}
+                >
+                    <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#cbd5e1" />
+                    <Controls
+                        showInteractive={false}
+                        className="!bg-white !border-slate-200 !shadow-lg !rounded-xl"
+                    />
+                </ReactFlow>
+            </div>
         </div>
     );
 }

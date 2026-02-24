@@ -8,13 +8,14 @@ import Link from 'next/link';
 
 interface TopicListProps {
     topics: Topic[];
+    subjectId: string;
 }
 
-export function TopicList({ topics }: TopicListProps) {
+export function TopicList({ topics, subjectId }: TopicListProps) {
     return (
         <div className="space-y-4 pb-20">
             {topics.map((topic, index) => (
-                <TopicItem key={topic.id} topic={topic} index={index} />
+                <TopicItem key={topic.id} topic={topic} index={index} subjectId={subjectId} />
             ))}
             {topics.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
@@ -25,7 +26,7 @@ export function TopicList({ topics }: TopicListProps) {
     );
 }
 
-function TopicItem({ topic, index }: { topic: Topic; index: number }) {
+function TopicItem({ topic, index, subjectId }: { topic: Topic; index: number; subjectId: string }) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -66,7 +67,7 @@ function TopicItem({ topic, index }: { topic: Topic; index: number }) {
                                             </div>
                                         ))}
                                     </div>
-                                    <Link href={`/study/${subtopic.id}`} className="mt-4 w-full py-2.5 bg-white border border-gray-200 text-blue-600 font-medium rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                    <Link href={`/study/${subtopic.id}?topicName=${encodeURIComponent(topic.title)}&subtopicName=${encodeURIComponent(subtopic.title)}&subjectId=${encodeURIComponent(subjectId)}`} className="mt-4 w-full py-2.5 bg-white border border-gray-200 text-blue-600 font-medium rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all flex items-center justify-center gap-2 shadow-sm">
                                         <PlayCircle size={18} />
                                         Start Studying
                                     </Link>

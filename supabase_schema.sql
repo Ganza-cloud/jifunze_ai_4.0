@@ -92,3 +92,6 @@ BEGIN
   LIMIT match_count;
 END;
 $$;
+
+-- Add summary_cache column for storing generated summaries (keyed by subtopicName)
+ALTER TABLE subjects ADD COLUMN IF NOT EXISTS summary_cache jsonb DEFAULT '{}'::jsonb;

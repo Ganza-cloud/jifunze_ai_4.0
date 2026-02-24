@@ -1,26 +1,31 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useState, Suspense } from 'react';
 import { StudyLayout } from '@/components/study/StudyLayout';
 import { ChatInterface } from '@/components/study/ChatInterface';
 import { SummaryView } from '@/components/study/SummaryView';
 import { QuizEngine } from '@/components/study/QuizEngine';
 import { motion } from 'framer-motion';
 
-export default function StudyPage() {
+function StudyPageContent() {
     const { subtopicId } = useParams();
+    const searchParams = useSearchParams();
+
+    const topicName = searchParams.get('topicName') || '';
+    const subtopicName = searchParams.get('subtopicName') || '';
+    const subjectId = searchParams.get('subjectId') || '';
+
     const [activeTab, setActiveTab] = useState<'chat' | 'summary' | 'quiz'>('summary');
 
-    // Mock title derivation (in real app, fetch from store/API)
-    const formatTitle = (id: string) => {
-        if (!id) return 'Study Session';
-        return id.toString().split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    };
+    // Build a human-readable header: "Topic > Subtopic" or just subtopic name
+    const headerTitle = topicName && subtopicName
+        ? `${topicName} › ${subtopicName}`
+        : subtopicName || (subtopicId as string) || 'Study Session';
 
     return (
         <StudyLayout
-            subtopicTitle={formatTitle(subtopicId as string)}
+            subtopicTitle={headerTitle}
             activeTab={activeTab}
             onTabChange={setActiveTab}
         >
@@ -32,10 +37,31 @@ export default function StudyPage() {
                 transition={{ duration: 0.2 }}
                 className="h-full"
             >
-                {activeTab === 'chat' && <ChatInterface conceptName={formatTitle(subtopicId as string)} />}
-                {activeTab === 'summary' && <SummaryView />}
+                {activeTab === 'chat' && (
+                    <ChatInterface
+                        conceptName={subtopicName}
+                        subjectId={subjectId}
+                        subjectName=""
+                        subtopicName={subtopicName}
+                    />
+                )}
+                {activeTab === 'summary' && (
+                    <SummaryView
+                        subjectId={subjectId}
+                        subtopicName={subtopicName}
+                        topicName={topicName}
+                    />
+                )}
                 {activeTab === 'quiz' && <QuizEngine />}
             </motion.div>
         </StudyLayout>
+    );
+}
+
+export default function StudyPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" /></div>}>
+            <StudyPageContent />
+        </Suspense>
     );
 }

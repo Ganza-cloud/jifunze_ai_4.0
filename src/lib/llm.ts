@@ -166,3 +166,30 @@ export async function embedWithFallback(embedFn: (model: any) => Promise<any>): 
     console.error('[Embedding Fallback] All embedding models exhausted.');
     throw lastError;
 }
+
+/**
+ * Batch-embed multiple texts with fallback.
+ * Uses embedMany for efficiency — 1 API call per batch instead of N.
+ */
+export async function embedManyWithFallback(
+    embedFn: (model: any) => Promise<{ embeddings: number[][] }>,
+): Promise<{ embeddings: number[][] }> {
+    const chain = getEmbeddingModelChain();
+    let lastError: unknown;
+
+    for (const entry of chain) {
+        try {
+            console.log(`[Batch Embedding] Trying: ${entry.label}`);
+            const result = await embedFn(entry.model);
+            console.log(`[Batch Embedding] ✓ Success with: ${entry.label} (${result.embeddings.length} embeddings)`);
+            return result;
+        } catch (error: any) {
+            lastError = error;
+            console.warn(`[Batch Embedding] ✗ ${entry.label} failed:`, error?.message?.slice(0, 200));
+        }
+    }
+
+    console.error('[Batch Embedding] All embedding models exhausted.');
+    throw lastError;
+}
+

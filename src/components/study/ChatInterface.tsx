@@ -17,9 +17,12 @@ const STARTER_PROMPTS = [
 
 interface ChatInterfaceProps {
     conceptName?: string;
+    subjectId?: string;
+    subjectName?: string;
+    subtopicName?: string;
 }
 
-export function ChatInterface({ conceptName }: ChatInterfaceProps = {}) {
+export function ChatInterface({ conceptName, subjectId, subjectName, subtopicName }: ChatInterfaceProps) {
     const { subtopicId } = useParams();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [inputValue, setInputValue] = useState('');
@@ -32,7 +35,7 @@ export function ChatInterface({ conceptName }: ChatInterfaceProps = {}) {
     } = useChat({
         transport: new TextStreamChatTransport({
             api: '/api/chat',
-            body: { subtopicId, conceptName },
+            body: { subtopicId, conceptName, subjectId, subjectName, subtopicName },
         }),
         onError: (err) => {
             console.error('[ChatInterface] useChat error:', err);

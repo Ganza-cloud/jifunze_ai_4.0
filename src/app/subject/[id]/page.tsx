@@ -195,7 +195,7 @@ export default function SubjectPage() {
                         className="w-full"
                     >
                         {activeTab === 'topics' && (
-                            <TopicList topics={subject.topics} />
+                            <TopicList topics={subject.topics} subjectId={subject.id} />
                         )}
                         {activeTab === 'mindmap' && (
                             <InteractiveMindmap

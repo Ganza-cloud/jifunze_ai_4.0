@@ -22,6 +22,12 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const suppFileInputRef = useRef<HTMLInputElement>(null);
 
+    // SSE progress state
+    const [progress, setProgress] = useState(0);
+    const [stepName, setStepName] = useState('Starting…');
+    const [details, setDetails] = useState('');
+    const [streamError, setStreamError] = useState<string | null>(null);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
@@ -41,6 +47,10 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
         }
 
         setIsGenerating(true);
+        setProgress(0);
+        setStepName('Starting…');
+        setDetails('Uploading your files…');
+        setStreamError(null);
 
         try {
             const formData = new FormData();
@@ -53,41 +63,86 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
                 body: formData,
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to ingest document');
+            if (!response.ok || !response.body) {
+                throw new Error('Failed to start processing. Please try again.');
             }
 
-            const data = await response.json();
+            // Read SSE stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-            // Fetch the newly created subject to add to store
-            // Or just add a placeholder. ideally fetch.
-            // For now, let's construct a minimal subject object or trigger a re-fetch in the parent?
-            // The store's addSubject is client-side only array push.
-            // We should probably rely on page re-fetching or SWR/React Query.
-            // But to keep it simple and consistent with current store usage:
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            // NOTE: Since the backend did the work, we can just create a basic object 
-            // and let the user click it, which will trigger the real fetch in [id]/page.tsx
-            const newSubject: Subject = {
-                id: data.subjectId,
-                title,
-                lastStudied: new Date().toISOString(),
-                progress: 0,
-                topics: [], // Topics are in DB, will load on navigation
-            };
+                buffer += decoder.decode(value, { stream: true });
 
-            addSubject(newSubject);
-            toast.success('Subject created successfully!');
-            onClose();
-            setTitle('');
-            setFile(null);
-            setSuppFiles([]);
+                // Parse complete SSE events from buffer
+                const lines = buffer.split('\n\n');
+                buffer = lines.pop() || ''; // Keep incomplete last chunk
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data: ')) continue;
+
+                    try {
+                        const event = JSON.parse(trimmed.slice(6));
+
+                        if (event.type === 'progress') {
+                            setProgress(event.percentage);
+                            setStepName(event.step);
+                            setDetails(event.details);
+                        } else if (event.type === 'complete') {
+                            setProgress(100);
+                            setStepName('All done!');
+                            setDetails('Your course is ready');
+
+                            const newSubject: Subject = {
+                                id: event.subjectId,
+                                title,
+                                lastStudied: new Date().toISOString(),
+                                progress: 0,
+                                topics: [],
+                            };
+
+                            addSubject(newSubject);
+
+                            // Brief pause to show completion state
+                            await new Promise(r => setTimeout(r, 1200));
+                            toast.success('Subject created successfully!');
+                            onClose();
+                            setTitle('');
+                            setFile(null);
+                            setSuppFiles([]);
+                            setIsGenerating(false);
+                            return;
+                        } else if (event.type === 'error') {
+                            setStreamError(event.message);
+                            // Keep overlay visible with error state for 3s, then dismiss
+                            await new Promise(r => setTimeout(r, 3000));
+                            setIsGenerating(false);
+                            return;
+                        }
+                    } catch {
+                        // Skip malformed events
+                    }
+                }
+            }
+
+            // If stream ends without a complete event, treat as error
+            if (!streamError) {
+                setStreamError('Processing ended unexpectedly. Please try again.');
+                await new Promise(r => setTimeout(r, 3000));
+                setIsGenerating(false);
+            }
 
         } catch (error: any) {
             console.error('Generation failed:', error);
+            setStreamError(error.message);
             toast.error(`Error: ${error.message}`);
-        } finally {
+            // Keep overlay with error for 3s
+            await new Promise(r => setTimeout(r, 3000));
             setIsGenerating(false);
         }
     };
@@ -212,7 +267,7 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
                                     {isGenerating ? (
                                         <>
                                             <Loader2 size={18} className="animate-spin" />
-                                            Generating...
+                                            Processing…
                                         </>
                                     ) : (
                                         'Generate Course'
@@ -221,7 +276,14 @@ export function AddSubjectModal({ isOpen, onClose }: AddSubjectModalProps) {
                             </div>
                         </motion.div>
                     </motion.div>
-                    {isGenerating && <ProcessingOverlay message="Analyzing your materials..." />}
+                    {isGenerating && (
+                        <ProcessingOverlay
+                            progress={progress}
+                            stepName={stepName}
+                            details={details}
+                            error={streamError}
+                        />
+                    )}
                 </>
             )}
         </AnimatePresence>

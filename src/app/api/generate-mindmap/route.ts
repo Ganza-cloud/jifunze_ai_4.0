@@ -95,7 +95,7 @@ function computeLayout(tree: z.infer<typeof mindmapTreeSchema>): {
 
 export async function POST(req: NextRequest) {
     try {
-        const { subjectId } = await req.json();
+        const { subjectId, forceRegenerate } = await req.json();
 
         if (!subjectId) {
             return NextResponse.json({ error: 'subjectId is required' }, { status: 400 });
@@ -112,8 +112,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
         }
 
-        // Return cached data if it exists
-        if (subject.mindmap_data && subject.mindmap_data.nodes?.length > 0) {
+        // If forceRegenerate, clear cached data first
+        if (forceRegenerate) {
+            console.log('[generate-mindmap] Force regenerating — clearing cache');
+            await supabase
+                .from('subjects')
+                .update({ mindmap_data: null })
+                .eq('id', subjectId);
+        }
+
+        // Return cached data if it exists and we're not force-regenerating
+        if (!forceRegenerate && subject.mindmap_data && subject.mindmap_data.nodes?.length > 0) {
             console.log('[generate-mindmap] Returning cached mindmap data');
             return NextResponse.json(subject.mindmap_data);
         }

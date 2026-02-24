@@ -1,43 +1,76 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useCompletion } from '@ai-sdk/react';
 import { Download, RefreshCw, Loader2 } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
-import { useParams } from 'next/navigation';
 
-export function SummaryView() {
-    const { subtopicId } = useParams();
-    const [subtopicTitle, setSubtopicTitle] = useState('');
+interface SummaryViewProps {
+    subjectId: string;
+    subtopicName: string;
+    topicName: string;
+}
+
+export function SummaryView({ subjectId, subtopicName, topicName }: SummaryViewProps) {
+    const [cachedText, setCachedText] = useState<string | null>(null);
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     const { completion, complete, isLoading, error } = useCompletion({
         api: '/api/summary',
+        streamProtocol: 'text',
+        onFinish: (_prompt, finalCompletion) => {
+            // Save the completed text so it persists across tab switches
+            if (finalCompletion) {
+                setCachedText(finalCompletion);
+            }
+        },
     });
 
+    // Load summary on mount — the API checks cache first
     useEffect(() => {
-        // Format title from ID (simple mock, ideally verify from store/subject)
-        if (subtopicId) {
-            const title = (subtopicId as string)
-                .split('-')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
-            setSubtopicTitle(title);
-
-            // Trigger completion on mount
-            complete('', { body: { subtopicId } });
+        if (subtopicName && subjectId && !hasLoaded) {
+            setHasLoaded(true);
+            complete('', { body: { subjectId, subtopicName, topicName } });
         }
-    }, [subtopicId, complete]);
+    }, [subtopicName, subjectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleRegenerate = () => {
-        complete('', { body: { subtopicId } });
-    };
+    const handleRegenerate = useCallback(() => {
+        setCachedText(null);
+        complete('', { body: { subjectId, subtopicName, topicName, forceRegenerate: true } });
+    }, [complete, subjectId, subtopicName, topicName]);
+
+    const handleDownload = useCallback(() => {
+        const text = completion || cachedText;
+        if (!text) return;
+
+        const filename = subtopicName
+            ? `${subtopicName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_')}_Summary.md`
+            : 'Summary.md';
+
+        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, [completion, cachedText, subtopicName]);
+
+    const displayTitle = topicName && subtopicName
+        ? `${topicName} › ${subtopicName}`
+        : subtopicName || 'Generated Summary';
+
+    // Show completion text, or fall back to cached text from a previous tab switch
+    const displayText = completion || cachedText;
 
     return (
         <div className="flex flex-col h-full bg-white relative">
             {/* Toolbar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white sticky top-0 z-10 w-full">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    {subtopicTitle || "Generated Summary"}
+                    {displayTitle}
                 </span>
                 <div className="flex items-center gap-2">
                     <button
@@ -48,7 +81,12 @@ export function SummaryView() {
                     >
                         <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <button
+                        onClick={handleDownload}
+                        disabled={!displayText}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30"
+                        title="Download as Markdown"
+                    >
                         <Download size={18} />
                     </button>
                 </div>
@@ -56,8 +94,6 @@ export function SummaryView() {
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto w-full">
-                {/* Changed p-6 md:p-8 structure to separate loading/error handling */}
-
                 {error ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 text-center text-red-500">
                         <p>Error generating summary. Please try again.</p>
@@ -68,21 +104,21 @@ export function SummaryView() {
                             Retry
                         </button>
                     </div>
-                ) : (completion || isLoading) ? (
+                ) : (displayText || isLoading) ? (
                     <div className="p-6 md:p-8 max-w-none w-full">
-                        {isLoading && !completion && (
+                        {isLoading && !displayText && (
                             <div className="flex flex-col items-center justify-center py-20 animate-pulse">
                                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-4" />
-                                <p className="text-gray-400 text-sm">Thinking...</p>
+                                <p className="text-gray-400 text-sm">Generating summary for {subtopicName || 'this topic'}...</p>
                             </div>
                         )}
 
-                        {completion && (
-                            <MarkdownRenderer content={completion} />
+                        {displayText && (
+                            <MarkdownRenderer content={displayText} />
                         )}
 
                         {/* Cursor Blinker when streaming */}
-                        {isLoading && completion && (
+                        {isLoading && displayText && (
                             <span className="inline-block w-2 h-5 ml-1 bg-blue-500 animate-pulse align-middle" />
                         )}
                     </div>
