@@ -1,0 +1,50 @@
+{
+  "name": "jifunze_ai_4.0",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^3.0.29",
+    "@ai-sdk/openai": "^3.0.29",
+    "@ai-sdk/react": "^3.0.91",
+    "@llamaindex/cloud": "^4.1.3",
+    "@llamaindex/env": "^0.1.30",
+    "@llamaindex/readers": "^3.1.21",
+    "@supabase/supabase-js": "^2.96.0",
+    "@xyflow/react": "^12.10.1",
+    "ai": "^6.0.89",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.3.1",
+    "framer-motion": "^12.34.1",
+    "katex": "^0.16.28",
+    "llamaindex": "^0.12.1",
+    "lucide-react": "^0.574.0",
+    "next": "16.1.6",
+    "pdfjs-dist": "^3.11.174",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
