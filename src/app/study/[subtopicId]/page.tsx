@@ -5,7 +5,7 @@ import { useState, Suspense } from 'react';
 import { StudyLayout } from '@/components/study/StudyLayout';
 import { ChatInterface } from '@/components/study/ChatInterface';
 import { SummaryView } from '@/components/study/SummaryView';
-import { QuizEngine } from '@/components/study/QuizEngine';
+import { PracticeEngine } from '@/components/study/PracticeEngine';
 import { motion } from 'framer-motion';
 
 function StudyPageContent() {
@@ -16,7 +16,7 @@ function StudyPageContent() {
     const subtopicName = searchParams.get('subtopicName') || '';
     const subjectId = searchParams.get('subjectId') || '';
 
-    const [activeTab, setActiveTab] = useState<'chat' | 'summary' | 'quiz'>('summary');
+    const [activeTab, setActiveTab] = useState<'chat' | 'summary' | 'practice'>('summary');
 
     // Build a human-readable header: "Topic > Subtopic" or just subtopic name
     const headerTitle = topicName && subtopicName
@@ -52,7 +52,13 @@ function StudyPageContent() {
                         topicName={topicName}
                     />
                 )}
-                {activeTab === 'quiz' && <QuizEngine />}
+                {activeTab === 'practice' && (
+                    <PracticeEngine
+                        subjectId={subjectId}
+                        subtopicName={subtopicName}
+                        topicName={topicName}
+                    />
+                )}
             </motion.div>
         </StudyLayout>
     );

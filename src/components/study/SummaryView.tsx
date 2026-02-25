@@ -114,7 +114,9 @@ export function SummaryView({ subjectId, subtopicName, topicName }: SummaryViewP
                         )}
 
                         {displayText && (
-                            <MarkdownRenderer content={displayText} />
+                            <div className="text-gray-900">
+                                <MarkdownRenderer content={displayText} />
+                            </div>
                         )}
 
                         {/* Cursor Blinker when streaming */}

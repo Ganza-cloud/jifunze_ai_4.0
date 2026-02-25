@@ -7,8 +7,8 @@ import Link from 'next/link';
 
 interface StudyLayoutProps {
     subtopicTitle: string;
-    activeTab: 'chat' | 'summary' | 'quiz';
-    onTabChange: (tab: 'chat' | 'summary' | 'quiz') => void;
+    activeTab: 'chat' | 'summary' | 'practice';
+    onTabChange: (tab: 'chat' | 'summary' | 'practice') => void;
     children: ReactNode;
 }
 
@@ -17,7 +17,7 @@ export function StudyLayout({ subtopicTitle, activeTab, onTabChange, children }:
     const tabs = [
         { id: 'chat', icon: MessageSquare, label: 'AI Tutor' },
         { id: 'summary', icon: FileText, label: 'Summary' },
-        { id: 'quiz', icon: BrainCircuit, label: 'Quiz' },
+        { id: 'practice', icon: BrainCircuit, label: 'Practice' },
     ] as const;
 
     return (
