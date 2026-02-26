@@ -95,3 +95,31 @@ $$;
 
 -- Add summary_cache column for storing generated summaries (keyed by subtopicName)
 ALTER TABLE subjects ADD COLUMN IF NOT EXISTS summary_cache jsonb DEFAULT '{}'::jsonb;
+
+-- Create table for chat sessions
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_id text REFERENCES subjects(id) ON DELETE CASCADE,
+  subtopic_name text,
+  title text DEFAULT 'New Chat',
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Create table for chat messages
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  role text CHECK (role IN ('user', 'assistant', 'system')),
+  content text NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Create table for practice sessions
+CREATE TABLE IF NOT EXISTS practice_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_id text REFERENCES subjects(id) ON DELETE CASCADE,
+  subtopic_name text,
+  score integer NOT NULL DEFAULT 0,
+  total_questions integer NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);

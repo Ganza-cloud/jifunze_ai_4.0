@@ -16,11 +16,13 @@ import '@xyflow/react/dist/style.css';
 import { RootNode } from './mindmap/RootNode';
 import { BranchNode } from './mindmap/BranchNode';
 import { LeafNode } from './mindmap/LeafNode';
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, MessageCircle, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChatInterface } from './study/ChatInterface';
 
 interface InteractiveMindmapProps {
     subjectId: string;
-    onNodeClick: (label: string, type: string) => void;
+    onNodeClick?: (label: string, type: string) => void;
 }
 
 function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
@@ -31,6 +33,10 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
     const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Chat drawer state
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatContext, setChatContext] = useState<string>('');
 
     // Custom node types with callbacks injected via data
     const nodeTypes = useMemo(() => ({
@@ -90,7 +96,11 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
 
     // Deep dive handler
     const handleDeepDive = useCallback((label: string, type: string) => {
-        onNodeClick(label, type);
+        setChatContext(label);
+        setIsChatOpen(true);
+        if (onNodeClick) {
+            onNodeClick(label, type);
+        }
     }, [onNodeClick]);
 
     // Compute visible nodes/edges based on expand state
@@ -182,7 +192,7 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
                     Regenerate
                 </button>
             </div>
-            <div className="h-[65vh] rounded-3xl border border-slate-200 overflow-hidden bg-white">
+            <div className="h-[65vh] rounded-3xl border border-slate-200 overflow-hidden bg-white relative flex flex-col">
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -208,6 +218,65 @@ function MindmapCanvas({ subjectId, onNodeClick }: InteractiveMindmapProps) {
                         className="!bg-white !border-slate-200 !shadow-lg !rounded-xl"
                     />
                 </ReactFlow>
+
+                {/* Floating Action Button */}
+                <button
+                    onClick={() => setIsChatOpen(true)}
+                    className={`absolute bottom-6 right-6 z-10 p-4 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all ${isChatOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+                    aria-label="Open Chat"
+                >
+                    <MessageCircle size={24} />
+                </button>
+
+                {/* Bottom Sheet Chat Interface */}
+                <AnimatePresence>
+                    {isChatOpen && (
+                        <>
+                            {/* Backdrop overlay */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsChatOpen(false)}
+                                className="absolute inset-0 bg-slate-900/20 z-20 backdrop-blur-sm"
+                            />
+                            {/* Sliding Panel */}
+                            <motion.div
+                                initial={{ y: '100%' }}
+                                animate={{ y: 0 }}
+                                exit={{ y: '100%' }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                className="absolute bottom-0 inset-x-0 h-[85%] bg-white rounded-t-3xl shadow-[0_-8px_30px_rgb(0,0,0,0.12)] z-30 flex flex-col border-t border-slate-200"
+                            >
+                                {/* Drag Handle Area (visual only for now) */}
+                                <div className="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing w-full">
+                                    <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                                </div>
+                                {/* Header */}
+                                <div className="flex items-center justify-between px-6 pb-2 border-b border-slate-100">
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900">Concept Chat</h3>
+                                        <p className="text-xs text-slate-500 line-clamp-1">{chatContext ? `Context: ${chatContext}` : 'Ask a general question'}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsChatOpen(false)}
+                                        className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
+                                {/* Chat Interface Container */}
+                                <div className="flex-1 overflow-hidden relative">
+                                    <ChatInterface
+                                        subjectId={subjectId}
+                                        subtopicName={chatContext || undefined}
+                                        conceptName={chatContext || undefined}
+                                    />
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

@@ -5,17 +5,23 @@ interface StoreState {
     subjects: Subject[];
     activeSubjectId: string | null;
     isLoaded: boolean;
+    isHistoryOpen: boolean;
+    activeSessionId: string | null;
     setSubjects: (subjects: Subject[]) => void;
     addSubject: (subject: Subject) => void;
     removeSubject: (id: string) => void;
     setActiveSubject: (id: string | null) => void;
     getSubject: (id: string) => Subject | undefined;
+    toggleHistory: () => void;
+    setActiveSessionId: (id: string | null) => void;
 }
 
 export const useStore = create<StoreState>((set, get) => ({
     subjects: [],
     activeSubjectId: null,
     isLoaded: false,
+    isHistoryOpen: false,
+    activeSessionId: null,
     setSubjects: (subjects) => set({ subjects, isLoaded: true }),
     addSubject: (subject) =>
         set((state) => ({ subjects: [...state.subjects, subject] })),
@@ -23,4 +29,6 @@ export const useStore = create<StoreState>((set, get) => ({
         set((state) => ({ subjects: state.subjects.filter((s) => s.id !== id) })),
     setActiveSubject: (id) => set({ activeSubjectId: id }),
     getSubject: (id) => get().subjects.find((s) => s.id === id),
+    toggleHistory: () => set((state) => ({ isHistoryOpen: !state.isHistoryOpen })),
+    setActiveSessionId: (id: string | null) => set({ activeSessionId: id }),
 }));

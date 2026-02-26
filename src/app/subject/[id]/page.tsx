@@ -4,18 +4,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { TopicList } from '@/components/TopicList';
 import { InteractiveMindmap } from '@/components/InteractiveMindmap';
-import { ConceptChat } from '@/components/ConceptChat';
+import { PracticeLibrary } from '@/components/study/PracticeLibrary';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, List, Share2, MoreHorizontal, Loader2, MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
 import { Subject } from '@/lib/types';
 
-type TabKey = 'topics' | 'mindmap' | 'chat';
+type TabKey = 'topics' | 'mindmap' | 'practice';
 const TABS: { key: TabKey; label: string }[] = [
     { key: 'topics', label: 'Topical Breakdown' },
     { key: 'mindmap', label: 'Mind Map' },
-    { key: 'chat', label: 'Concept Chat' },
+    { key: 'practice', label: 'Practice' },
 ];
 
 export default function SubjectPage() {
@@ -38,11 +38,11 @@ export default function SubjectPage() {
         setActiveTab(newTab);
     }, [activeTab, page]);
 
-    // When a mindmap node is clicked → slide to Concept Chat
+    // When a mindmap node is clicked
     const handleNodeClick = useCallback((label: string, type: string) => {
         setSelectedNode({ label, type });
-        switchTab('chat');
-    }, [switchTab]);
+        // The mindmap internal component now handles opening the chat drawer
+    }, []);
 
     const handleBackToMindmap = useCallback(() => {
         switchTab('mindmap');
@@ -203,13 +203,8 @@ export default function SubjectPage() {
                                 onNodeClick={handleNodeClick}
                             />
                         )}
-                        {activeTab === 'chat' && (
-                            <ConceptChat
-                                subjectId={subject.id}
-                                subjectName={subject?.title}
-                                selectedNode={selectedNode}
-                                onBackToMindmap={handleBackToMindmap}
-                            />
+                        {activeTab === 'practice' && (
+                            <PracticeLibrary subject={subject} />
                         )}
                     </motion.div>
                 </AnimatePresence>

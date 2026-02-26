@@ -5,8 +5,11 @@ import { TextStreamChatTransport } from 'ai';
 import { motion } from 'framer-motion';
 import { Send, Sparkles, User, Bot } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
+import { supabase } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
+import { Message } from 'ai/react';
 
 const STARTER_PROMPTS = [
     "Explain the basic concept",
@@ -24,8 +27,48 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conceptName, subjectId, subjectName, subtopicName }: ChatInterfaceProps) {
     const { subtopicId } = useParams();
+    const searchParams = useSearchParams();
+    const sessionIdFromUrl = searchParams.get('sessionId');
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [inputValue, setInputValue] = useState('');
+    const [sessionId, setSessionId] = useState<string | null>(sessionIdFromUrl);
+    const [initialMessagesLoaded, setInitialMessagesLoaded] = useState(false);
+    const [initialMsgs, setInitialMsgs] = useState<Message[]>([]);
+
+    useEffect(() => {
+        if (sessionIdFromUrl) {
+            setSessionId(sessionIdFromUrl);
+            loadHistory(sessionIdFromUrl);
+        } else {
+            setSessionId(uuidv4());
+            setInitialMessagesLoaded(true);
+        }
+    }, [sessionIdFromUrl]);
+
+    const loadHistory = async (id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('chat_messages')
+                .select('*')
+                .eq('session_id', id)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            if (data) {
+                const formatted = data.map(msg => ({
+                    id: msg.id,
+                    role: msg.role,
+                    content: msg.content,
+                }));
+                setInitialMsgs(formatted as Message[]);
+            }
+        } catch (error) {
+            console.error('Failed to load history:', error);
+        } finally {
+            setInitialMessagesLoaded(true);
+        }
+    };
 
     const {
         messages,
@@ -33,10 +76,67 @@ export function ChatInterface({ conceptName, subjectId, subjectName, subtopicNam
         status,
         error
     } = useChat({
+        id: sessionId || undefined,
+        initialMessages: initialMsgs,
         transport: new TextStreamChatTransport({
             api: '/api/chat',
-            body: { subtopicId, conceptName, subjectId, subjectName, subtopicName },
+            body: { subtopicId, conceptName, subjectId, subjectName, subtopicName, sessionId },
         }),
+        onFinish: async (message) => {
+            if (!sessionId || !subjectId || !subtopicName) return;
+
+            // Check if session exists, create if not
+            const { data: sessionData } = await supabase
+                .from('chat_sessions')
+                .select('id')
+                .eq('id', sessionId)
+                .single();
+
+            if (!sessionData) {
+                const titleText = messages.length > 0 ? messages[0].content.substring(0, 30) + '...' : 'New Chat';
+                await supabase.from('chat_sessions').insert({
+                    id: sessionId,
+                    subject_id: subjectId,
+                    subtopic_name: subtopicName,
+                    title: titleText
+                });
+            }
+
+            // At this point, `messages` contains all previous and current inputs, 
+            // `message` is the final assistant response. We need to save the user input and the AI response.
+            // A more robust way: since useChat aggregates, let's just save the final ones if they aren't already saved.
+            // Simplified: Save user message and AI response
+            // The user message is the second to last message in the array
+            // The assistant message is the last one (which is passed to onFinish)
+
+            // Find the last user message
+            const sortedMessages = [...messages, message].sort((a, b) => a.createdAt && b.createdAt ? a.createdAt.getTime() - b.createdAt.getTime() : 0);
+            const lastUserMessage = sortedMessages.filter(m => m.role === 'user').pop();
+
+            if (lastUserMessage) {
+                // Check if it's already saved to prevent duplicates
+                const { count } = await supabase
+                    .from('chat_messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('id', lastUserMessage.id);
+
+                if (count === 0) {
+                    await supabase.from('chat_messages').insert({
+                        id: lastUserMessage.id, // Using the SDK UUID if possible 
+                        session_id: sessionId,
+                        role: 'user',
+                        content: lastUserMessage.content
+                    });
+                }
+            }
+
+            await supabase.from('chat_messages').insert({
+                id: message.id,
+                session_id: sessionId,
+                role: 'assistant',
+                content: message.content
+            });
+        },
         onError: (err) => {
             console.error('[ChatInterface] useChat error:', err);
         },
@@ -56,6 +156,14 @@ export function ChatInterface({ conceptName, subjectId, subjectName, subtopicNam
     useEffect(() => {
         scrollToBottom();
     }, [messages, isLoading]);
+
+    if (!initialMessagesLoaded) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     const handleStarterClick = (prompt: string) => {
         sendMessage({ text: prompt });

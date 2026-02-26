@@ -15,8 +15,9 @@ function StudyPageContent() {
     const topicName = searchParams.get('topicName') || '';
     const subtopicName = searchParams.get('subtopicName') || '';
     const subjectId = searchParams.get('subjectId') || '';
+    const requestedTab = searchParams.get('tab') as 'chat' | 'summary' | 'practice' | null;
 
-    const [activeTab, setActiveTab] = useState<'chat' | 'summary' | 'practice'>('summary');
+    const [activeTab, setActiveTab] = useState<'chat' | 'summary' | 'practice'>(requestedTab || 'summary');
 
     // Build a human-readable header: "Topic > Subtopic" or just subtopic name
     const headerTitle = topicName && subtopicName
@@ -39,6 +40,7 @@ function StudyPageContent() {
             >
                 {activeTab === 'chat' && (
                     <ChatInterface
+                        key={searchParams.get('sessionId') || 'new-session'}
                         conceptName={subtopicName}
                         subjectId={subjectId}
                         subjectName=""

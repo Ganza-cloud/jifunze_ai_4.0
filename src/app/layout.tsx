@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   description: "Your university study companion",
 };
 
+import { GlobalHistorySidebar } from "@/components/GlobalHistorySidebar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,6 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <GlobalHistorySidebar />
         <Toaster />
       </body>
     </html>

@@ -108,7 +108,7 @@ export function PracticeEngine({ subjectId, subtopicName, topicName }: PracticeE
         updateSessionData({ score: newScore });
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (!activeSession) return;
 
         if (activeSession.currentQuestionIndex < activeSession.questions.length - 1) {
@@ -118,6 +118,30 @@ export function PracticeEngine({ subjectId, subtopicName, topicName }: PracticeE
             setSelectedAnswer(null);
             setShowSolution(false);
         } else {
+            // Save to database
+            try {
+                await fetch('/api/history/practice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subjectId: activeSession.subjectId,
+                        subtopicName: activeSession.subtopicName,
+                        score: activeSession.score,
+                        totalQuestions: activeSession.questions.length
+                    })
+                });
+                // Or directly using supabase if preferred, but doing it consistently with the plan:
+                const { supabase } = await import('@/lib/supabase');
+                await supabase.from('practice_sessions').insert({
+                    subject_id: activeSession.subjectId,
+                    subtopic_name: activeSession.subtopicName,
+                    score: activeSession.score,
+                    total_questions: activeSession.questions.length
+                });
+            } catch (err) {
+                console.error("Failed to save practice session:", err);
+            }
+
             endSession();
             setState('result');
         }

@@ -140,7 +140,6 @@ export function getEmbeddingModel() {
 export function getEmbeddingModelChain() {
     return [
         { model: getOpenRouterProvider().textEmbeddingModel('text-embedding-3-small'), label: 'OpenRouter text-embedding-3-small' },
-        { model: getGoogleProvider().textEmbeddingModel('text-embedding-004'), label: 'Google text-embedding-004' },
     ];
 }
 
@@ -174,22 +173,40 @@ export async function embedWithFallback(embedFn: (model: any) => Promise<any>): 
 export async function embedManyWithFallback(
     embedFn: (model: any) => Promise<{ embeddings: number[][] }>,
 ): Promise<{ embeddings: number[][] }> {
-    const chain = getEmbeddingModelChain();
-    let lastError: unknown;
+    // 1. STRICTLY OpenRouter Only (1536 dims). No Google Fallback.
+    const primaryModel = getOpenRouterProvider().textEmbeddingModel('text-embedding-3-small');
+    const modelLabel = 'OpenRouter text-embedding-3-small';
 
-    for (const entry of chain) {
+    const MAX_RETRIES = 5;
+    let attempt = 0;
+
+    while (attempt < MAX_RETRIES) {
         try {
-            console.log(`[Batch Embedding] Trying: ${entry.label}`);
-            const result = await embedFn(entry.model);
-            console.log(`[Batch Embedding] ✓ Success with: ${entry.label} (${result.embeddings.length} embeddings)`);
+            if (attempt > 0) console.log(`[Batch Embedding] Attempt ${attempt + 1}/${MAX_RETRIES} for ${modelLabel}...`);
+
+            const result = await embedFn(primaryModel);
+
+            console.log(`[Batch Embedding] ✓ Success with: ${modelLabel} (${result.embeddings.length} embeddings)`);
             return result;
+
         } catch (error: any) {
-            lastError = error;
-            console.warn(`[Batch Embedding] ✗ ${entry.label} failed:`, error?.message?.slice(0, 200));
+            attempt++;
+            const isRateLimit = error?.message?.includes('429') || error?.status === 429 || error?.code === 'too_many_requests';
+
+            if (isRateLimit && attempt < MAX_RETRIES) {
+                // Exponential Backoff: Wait 2s, then 4s, then 8s, etc.
+                const waitTime = Math.pow(2, attempt) * 1000;
+                console.warn(`[Batch Embedding] ⚠ Rate Limit (429) hit. Retrying in ${waitTime}ms...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue; // Retry loop
+            }
+
+            // If it's not a rate limit, or we ran out of retries, throw the error
+            console.error(`[Batch Embedding] ✗ Failed permanently:`, error?.message?.slice(0, 200));
+            throw error;
         }
     }
 
-    console.error('[Batch Embedding] All embedding models exhausted.');
-    throw lastError;
+    throw new Error(`[Batch Embedding] Max retries exceeded for ${modelLabel}`);
 }
 
