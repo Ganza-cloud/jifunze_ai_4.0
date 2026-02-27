@@ -7,12 +7,14 @@ interface StoreState {
     isLoaded: boolean;
     isHistoryOpen: boolean;
     activeSessionId: string | null;
+    isSidebarOpen: boolean;
     setSubjects: (subjects: Subject[]) => void;
     addSubject: (subject: Subject) => void;
     removeSubject: (id: string) => void;
     setActiveSubject: (id: string | null) => void;
     getSubject: (id: string) => Subject | undefined;
     toggleHistory: () => void;
+    toggleSidebar: () => void;
     setActiveSessionId: (id: string | null) => void;
 }
 
@@ -21,6 +23,7 @@ export const useStore = create<StoreState>((set, get) => ({
     activeSubjectId: null,
     isLoaded: false,
     isHistoryOpen: false,
+    isSidebarOpen: false,
     activeSessionId: null,
     setSubjects: (subjects) => set({ subjects, isLoaded: true }),
     addSubject: (subject) =>
@@ -30,5 +33,6 @@ export const useStore = create<StoreState>((set, get) => ({
     setActiveSubject: (id) => set({ activeSubjectId: id }),
     getSubject: (id) => get().subjects.find((s) => s.id === id),
     toggleHistory: () => set((state) => ({ isHistoryOpen: !state.isHistoryOpen })),
+    toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
     setActiveSessionId: (id: string | null) => set({ activeSessionId: id }),
 }));

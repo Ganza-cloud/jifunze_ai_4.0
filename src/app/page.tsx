@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { SubjectCard } from '@/components/SubjectCard';
 import { AddSubjectModal } from '@/components/AddSubjectModal';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, MoreHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase';
 import { Subject } from '@/lib/types';
 
 export default function Home() {
-    const { subjects, isLoaded, setSubjects } = useStore();
+    const { subjects, isLoaded, setSubjects, toggleHistory } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Hydrate subjects from Supabase on first mount
@@ -58,13 +58,21 @@ export default function Home() {
                         <h1 className="text-3xl font-bold text-gray-900 mb-2">My Library</h1>
                         <p className="text-gray-500">Continue learning where you left off</p>
                     </div>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl active:scale-95 transform duration-200"
-                    >
-                        <Plus size={20} />
-                        <span className="font-medium">Add Subject</span>
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={toggleHistory}
+                            className="p-3 hover:bg-gray-100 rounded-full text-gray-600 transition-colors border border-gray-200"
+                        >
+                            <MoreHorizontal size={20} />
+                        </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl active:scale-95 transform duration-200"
+                        >
+                            <Plus size={20} />
+                            <span className="font-medium">Add Subject</span>
+                        </button>
+                    </div>
                 </header>
 
                 {!isLoaded ? (

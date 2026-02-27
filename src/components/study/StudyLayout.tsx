@@ -2,8 +2,9 @@
 
 import { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, MessageSquare, FileText, BrainCircuit } from 'lucide-react';
+import { ArrowLeft, MessageSquare, FileText, BrainCircuit, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
+import { useStore } from '@/store/useStore';
 
 interface StudyLayoutProps {
     subtopicTitle: string;
@@ -13,6 +14,7 @@ interface StudyLayoutProps {
 }
 
 export function StudyLayout({ subtopicTitle, activeTab, onTabChange, children }: StudyLayoutProps) {
+    const { toggleHistory } = useStore();
 
     const tabs = [
         { id: 'chat', icon: MessageSquare, label: 'AI Tutor' },
@@ -33,6 +35,12 @@ export function StudyLayout({ subtopicTitle, activeTab, onTabChange, children }:
                             {subtopicTitle || 'Study Session'}
                         </h1>
                     </div>
+                    <button
+                        onClick={toggleHistory}
+                        className="p-2 hover:bg-gray-100 rounded-full text-gray-600 transition-colors"
+                    >
+                        <MoreHorizontal size={20} />
+                    </button>
                 </div>
 
                 {/* Navigation Tabs */}
